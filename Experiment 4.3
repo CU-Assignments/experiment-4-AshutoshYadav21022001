@@ -1,0 +1,137 @@
+import java.util.*;
+import java.util.concurrent.locks.*;
+
+// Seat class representing each seat with a seat number
+class Seat {
+    private int seatNumber;
+    private boolean isBooked;
+
+    public Seat(int seatNumber) {
+        this.seatNumber = seatNumber;
+        this.isBooked = false;
+    }
+
+    public int getSeatNumber() {
+        return seatNumber;
+    }
+
+    public boolean isBooked() {
+        return isBooked;
+    }
+
+    public void bookSeat() {
+        this.isBooked = true;
+    }
+
+    @Override
+    public String toString() {
+        return "Seat " + seatNumber + (isBooked ? " (Booked)" : " (Available)");
+    }
+}
+
+// TicketBookingSystem class to manage the seat booking
+class TicketBookingSystem {
+    private List<Seat> seats;
+    private final ReentrantLock lock = new ReentrantLock();
+
+    public TicketBookingSystem(int totalSeats) {
+        seats = new ArrayList<>();
+        for (int i = 1; i <= totalSeats; i++) {
+            seats.add(new Seat(i));
+        }
+    }
+
+    // Method to book a seat
+    public boolean bookSeat(int seatNumber) {
+        lock.lock();  // Locking to ensure no double booking happens
+        try {
+            for (Seat seat : seats) {
+                if (seat.getSeatNumber() == seatNumber && !seat.isBooked()) {
+                    seat.bookSeat();
+                    System.out.println("Booking successful for Seat " + seatNumber);
+                    return true;
+                }
+            }
+            System.out.println("Seat " + seatNumber + " is already booked or invalid.");
+            return false;
+        } finally {
+            lock.unlock();  // Unlock after booking
+        }
+    }
+
+    // Method to display all seats (for testing)
+    public void displaySeats() {
+        for (Seat seat : seats) {
+            System.out.println(seat);
+        }
+    }
+}
+
+// Thread class representing a booking request
+class BookingThread extends Thread {
+    private TicketBookingSystem system;
+    private int seatNumber;
+    private boolean isVIP;
+
+    public BookingThread(TicketBookingSystem system, int seatNumber, boolean isVIP) {
+        this.system = system;
+        this.seatNumber = seatNumber;
+        this.isVIP = isVIP;
+    }
+
+    @Override
+    public void run() {
+        if (isVIP) {
+            System.out.println(Thread.currentThread().getName() + " (VIP) is trying to book Seat " + seatNumber);
+        } else {
+            System.out.println(Thread.currentThread().getName() + " is trying to book Seat " + seatNumber);
+        }
+        boolean success = system.bookSeat(seatNumber);
+        if (!success) {
+            System.out.println(Thread.currentThread().getName() + " failed to book Seat " + seatNumber);
+        }
+    }
+}
+
+public class TicketBookingApp {
+    public static void main(String[] args) {
+        // Initialize ticket booking system with 10 seats
+        TicketBookingSystem bookingSystem = new TicketBookingSystem(10);
+
+        // Create threads for normal and VIP bookings
+        BookingThread thread1 = new BookingThread(bookingSystem, 3, false); // Normal booking
+        BookingThread thread2 = new BookingThread(bookingSystem, 5, true);  // VIP booking
+        BookingThread thread3 = new BookingThread(bookingSystem, 3, false); // Normal booking for the same seat
+        BookingThread thread4 = new BookingThread(bookingSystem, 7, true);  // VIP booking
+        BookingThread thread5 = new BookingThread(bookingSystem, 9, false); // Normal booking
+
+        // Set thread priorities (VIP bookings have higher priority)
+        thread2.setPriority(Thread.MAX_PRIORITY);  // VIP thread with high priority
+        thread4.setPriority(Thread.MAX_PRIORITY);  // VIP thread with high priority
+        thread1.setPriority(Thread.NORM_PRIORITY); // Normal thread with normal priority
+        thread3.setPriority(Thread.NORM_PRIORITY); // Normal thread with normal priority
+        thread5.setPriority(Thread.NORM_PRIORITY); // Normal thread with normal priority
+
+        // Start the threads
+        thread1.start();
+        thread2.start();
+        thread3.start();
+        thread4.start();
+        thread5.start();
+
+        // Wait for threads to finish
+        try {
+            thread1.join();
+            thread2.join();
+            thread3.join();
+            thread4.join();
+            thread5.join();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
+        // Display final seat status
+        System.out.println("\nFinal Seat Status:");
+        bookingSystem.displaySeats();
+    }
+}
