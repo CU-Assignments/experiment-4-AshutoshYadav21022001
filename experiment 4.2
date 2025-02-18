@@ -1,0 +1,116 @@
+import java.util.*;
+
+// Card class to represent individual cards
+class Card {
+    private String suit;
+    private String rank;
+
+    public Card(String suit, String rank) {
+        this.suit = suit;
+        this.rank = rank;
+    }
+
+    public String getSuit() {
+        return suit;
+    }
+
+    public String getRank() {
+        return rank;
+    }
+
+    @Override
+    public String toString() {
+        return rank + " of " + suit;
+    }
+}
+
+// CardDeck class to manage the deck of cards
+class CardDeck {
+    private List<Card> deck;
+    private Map<String, List<Card>> suitMap;
+
+    public CardDeck() {
+        deck = new ArrayList<>();
+        suitMap = new HashMap<>();
+        generateDeck();
+    }
+
+    // Generate a standard deck of 52 cards
+    private void generateDeck() {
+        String[] suits = {"Hearts", "Diamonds", "Clubs", "Spades"};
+        String[] ranks = {"2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A"};
+
+        for (String suit : suits) {
+            for (String rank : ranks) {
+                Card card = new Card(suit, rank);
+                deck.add(card);
+                suitMap.computeIfAbsent(suit, k -> new ArrayList<>()).add(card);
+            }
+        }
+    }
+
+    // Method to find all cards in a given suit
+    public List<Card> findCardsBySuit(String suit) {
+        return suitMap.getOrDefault(suit, Collections.emptyList());
+    }
+
+    public List<Card> getDeck() {
+        return deck;
+    }
+}
+
+// Thread class to simulate card search for users
+class CardSearchThread extends Thread {
+    private String suitToFind;
+    private CardDeck deck;
+
+    public CardSearchThread(String suitToFind, CardDeck deck) {
+        this.suitToFind = suitToFind;
+        this.deck = deck;
+    }
+
+    @Override
+    public void run() {
+        List<Card> foundCards = deck.findCardsBySuit(suitToFind);
+        System.out.println("Cards found for " + suitToFind + ": " + foundCards);
+    }
+}
+
+public class CardDeckApp {
+    public static void main(String[] args) {
+        // Creating a CardDeck object to manage the deck
+        CardDeck cardDeck = new CardDeck();
+
+        // Create threads for users looking for cards of different suits
+        CardSearchThread user1 = new CardSearchThread("Hearts", cardDeck);
+        CardSearchThread user2 = new CardSearchThread("Clubs", cardDeck);
+        CardSearchThread user3 = new CardSearchThread("Spades", cardDeck);
+        CardSearchThread user4 = new CardSearchThread("Diamonds", cardDeck);
+
+        // Set thread priorities
+        user1.setPriority(Thread.MIN_PRIORITY);
+        user2.setPriority(Thread.NORM_PRIORITY);
+        user3.setPriority(Thread.MAX_PRIORITY);
+        user4.setPriority(Thread.NORM_PRIORITY);
+
+        // Start the threads (simulating different users)
+        user1.start();
+        user2.start();
+        user3.start();
+        user4.start();
+        
+        try {
+            user1.join();
+            user2.join();
+            user3.join();
+            user4.join();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        
+        // Ensure synchronized access if needed (for example, if card list modification happens)
+        synchronized (cardDeck) {
+            System.out.println("\nDeck contains " + cardDeck.getDeck().size() + " cards.");
+        }
+    }
+}
